@@ -1,35 +1,29 @@
-import { supabase } from '../_supabase';
+import { createClient } from '@supabase/supabase-js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  console.log('method:', req.method);
-  console.log('body:', req.body);
-
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { user_id, text, image_urls } = req.body || {};
+  const { user_id, text, image_urls } = req.body;
 
-  if (!text) {
-    return res.status(400).json({ error: 'text is required' });
-  }
-
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('posts')
     .insert([{ user_id, text, image_urls }]);
 
   if (error) {
-    console.error('supabase error:', error);
-    return res.status(500).json(error);
+    console.error(error);
+    return res.status(500).json({ error: error.message });
   }
 
-  return res.status(200).json({ ok: true });
+  return res.status(200).json({ data });
 }
